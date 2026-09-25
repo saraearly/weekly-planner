@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly Planner</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Planner">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='5' width='26' height='24' rx='5' fill='%231C1C1F'/%3E%3Crect x='3' y='5' width='26' height='7' rx='3' fill='%23C8102E'/%3E%3Crect x='8' y='16' width='5' height='4' rx='1' fill='%23fff'/%3E%3Crect x='15' y='16' width='5' height='4' rx='1' fill='%23fff'/%3E%3Crect x='8' y='22' width='5' height='4' rx='1' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#EDEDEF; --surface:#FFFFFF; --surface-2:#F6F6F7; --ink:#1C1C1F; --muted:#66666D; --faint:#909097;
+  --line:#D9D9DD; --line-soft:#E6E6E9; --accent:#C8102E; --today:#FFF6F6;
+  --evmix:80%; --stripe-base:#000; --stripe-amt:38%; --shadow:0 12px 40px rgba(20,20,26,.18);
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --bg:#141416; --surface:#1C1C1F; --surface-2:#232326; --ink:#EAEAEC; --muted:#A0A0A7; --faint:#75757C;
+    --line:#333337; --line-soft:#2A2A2E; --accent:#FF5A70; --today:#271D1F;
+    --evmix:30%; --stripe-base:#fff; --stripe-amt:0%; --shadow:0 12px 40px rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--ink);font:14px/1.4 var(--body);padding-inline:16px;padding-block:16px 40px}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- top bar ---------- */
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-bottom:14px}
+.range{font:700 clamp(22px,3vw,30px)/1.05 var(--display);letter-spacing:-.01em;margin:0;text-wrap:balance;min-width:0}
+.ctrls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:7px 12px;font-weight:500;line-height:1.1}
+.btn:hover{border-color:var(--faint)}
+.btn.icon{padding:7px 10px;min-width:34px}
+.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.btn.danger{color:var(--accent);border-color:color-mix(in oklab,var(--accent) 40%,var(--line))}
+.btn.danger.armed{background:var(--accent);color:#fff;border-color:var(--accent)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:2px}
+.seg button{border:0;background:transparent;padding:5px 11px;border-radius:6px;font-weight:500;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.legend{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.chip{display:inline-flex;align-items:center;border:1px solid var(--line);background:var(--surface);border-radius:999px;font-size:12.5px}
+.chip .dot{border:0;background:none;padding:5px 3px 5px 7px;display:grid;place-items:center;border-radius:999px 0 0 999px}
+.chip .dot i{width:14px;height:14px;border-radius:50%;background:var(--c);display:block;box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--c),var(--stripe-base) 25%);transition:transform .12s}
+.chip .dot:hover i{transform:scale(1.25)}
+.chip .nm{border:0;background:none;padding:4px 10px 4px 4px;color:var(--ink);border-radius:0 999px 999px 0}
+.chip .n{color:var(--faint);font-variant-numeric:tabular-nums}
+.chip.off{background:transparent}
+.chip.off .nm{color:var(--faint);text-decoration:line-through}
+.chip.off .dot i{opacity:.35}
+.syncpill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.syncpill i{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.syncpill[data-state="ok"] i{background:#2E9E5B}
+.syncpill[data-state="syncing"] i,.syncpill[data-state="offline"] i{background:#D9A400}
+.syncpill[data-state="auth"] i,.syncpill[data-state="norepo"] i{background:var(--accent)}
+.syncpill[data-state="auth"],.syncpill[data-state="norepo"]{color:var(--accent)}
+
+/* ---------- event pills ---------- */
+.ev{--stripe:color-mix(in oklab,var(--c),var(--stripe-base) var(--stripe-amt));
+  display:flex;align-items:flex-start;gap:5px;width:100%;text-align:left;border:0;border-left:3px solid var(--stripe);
+  background:color-mix(in oklab,var(--c) var(--evmix),var(--surface));border-radius:5px;padding:3px 6px 3px 5px;
+  font-size:12.5px;line-height:1.25;color:var(--ink);cursor:pointer;min-width:0}
+.ev:hover{filter:brightness(.97)}
+.ev .tm{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap;color:color-mix(in oklab,var(--ink) 75%,transparent)}
+.ev .ttl{overflow-wrap:anywhere;min-width:0;flex:1}
+.ev .nd{width:6px;height:6px;border-radius:50%;background:var(--ink);opacity:.55;flex:none;margin-top:5px}
+.ev .rp{font-size:11px;opacity:.6}
+.ev.task{background:var(--surface);border:1px solid var(--line-soft);border-left:3px solid var(--stripe)}
+.ev.task.none{border-left-color:var(--line)}
+.ev.done .ttl{text-decoration:line-through;color:var(--faint)}
+.chk{appearance:none;width:14px;height:14px;border:1.5px solid var(--faint);border-radius:4px;margin:1px 0 0;flex:none;background:var(--surface);cursor:pointer;display:grid;place-items:center}
+.chk:checked{background:var(--ink);border-color:var(--ink)}
+.chk:checked::after{content:"";width:7px;height:4px;border:2px solid var(--surface);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.dragging{opacity:.4}
+.drop-ok{outline:2px dashed var(--accent);outline-offset:-2px}
+
+/* ---------- four-week view ---------- */
+.dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(210px,1.35fr);gap:0 6px;padding:0 2px 6px}
+.dow span{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-left:4px}
+.weeks{display:flex;flex-direction:column;gap:10px}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(210px,1.35fr);gap:6px}
+.day{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r);min-height:150px;padding:6px 6px 26px;display:flex;flex-direction:column;gap:6px;position:relative;cursor:cell;min-width:0}
+.day.weekend{background:var(--surface-2)}
+.day.past{opacity:.72}
+.day.today{background:var(--today);border-color:color-mix(in oklab,var(--accent) 45%,var(--line))}
+.dh{display:flex;align-items:baseline;gap:6px;padding:0 2px}
+.dh b{font:700 17px/1 var(--display);font-variant-numeric:tabular-nums}
+.dh .mo{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.dh .wd{display:none;font-size:12px;color:var(--muted)}
+.day.today .dh b{background:var(--accent);color:#fff;border-radius:6px;padding:3px 5px 2px;margin:-3px 0 -2px -3px}
+.items{display:flex;flex-direction:column;gap:3px;min-width:0}
+.add{position:absolute;left:6px;right:6px;bottom:4px;border:0;background:transparent;color:var(--faint);font-size:12px;text-align:left;padding:2px 4px;border-radius:4px;opacity:0;transition:opacity .12s}
+.day:hover .add,.add:focus-visible{opacity:1}
+.add:hover{background:var(--surface-2);color:var(--ink)}
+
+.wtodo{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r);padding:10px 10px 8px;display:flex;flex-direction:column;gap:7px;min-width:0}
+.wtodo.cur{border-color:var(--ink)}
+.wt-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.wt-h h3{margin:0;font:700 13px/1.2 var(--display);letter-spacing:.01em}
+.wt-h span{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tds{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.td{display:flex;gap:7px;align-items:flex-start;padding:3px 4px;border-radius:5px}
+.td:hover{background:var(--surface-2)}
+.td .tt{border:0;background:none;padding:0;text-align:left;flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px;line-height:1.3}
+.td.done .tt{text-decoration:line-through;color:var(--faint)}
+.td .nd{width:6px;height:6px;border-radius:50%;background:var(--ink);opacity:.5;margin-top:6px;flex:none}
+.td-add input{width:100%;border:1px dashed var(--line);background:transparent;border-radius:6px;padding:6px 8px;font-size:13px}
+.td-add input:focus{border-style:solid;border-color:var(--faint);outline:none;background:var(--surface)}
+.roll{border:0;background:none;color:var(--muted);font-size:12px;text-align:left;padding:2px 0;text-decoration:underline;text-underline-offset:2px}
+.roll:hover{color:var(--ink)}
+.empty-note{font-size:12px;color:var(--faint);margin:0}
+
+/* ---------- week (time grid) view ---------- */
+.wkview{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:10px;align-items:start}
+.tg-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r)}
+.tg{display:grid;grid-template-columns:50px repeat(7,minmax(104px,1fr));min-width:780px}
+.tg .hd{padding:8px 6px 6px;border-bottom:1px solid var(--line-soft);display:flex;gap:6px;align-items:baseline;position:sticky;top:0;background:var(--surface);z-index:2}
+.tg .hd b{font:700 18px/1 var(--display)}
+.tg .hd span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tg .hd.today b{color:var(--accent)}
+.tg .ad{border-bottom:1px solid var(--line);padding:5px 4px 18px;display:flex;flex-direction:column;gap:3px;min-height:44px;position:relative;cursor:cell;border-left:1px solid var(--line-soft)}
+.tg .ad .add{bottom:1px}
+.tg .ad:hover .add{opacity:1}
+.tg .adl,.tg .gut{font-size:10.5px;color:var(--faint);text-align:right;padding-right:6px;font-variant-numeric:tabular-nums}
+.tg .adl{padding-top:8px;border-bottom:1px solid var(--line)}
+.tg .gut{position:relative}
+.tg .gut span{position:absolute;right:6px;transform:translateY(-50%)}
+.col{position:relative;border-left:1px solid var(--line-soft);cursor:cell;background-image:linear-gradient(var(--line-soft) 1px,transparent 1px);background-size:100% var(--hh)}
+.col.today{background-color:var(--today)}
+.col .ev{position:absolute;flex-direction:column;gap:0;overflow:hidden;padding:3px 5px;box-shadow:0 0 0 1px var(--surface)}
+.col .ev .tm{font-size:11px;font-weight:600}
+.nowline{position:absolute;left:0;right:0;height:2px;background:var(--accent);z-index:3;pointer-events:none}
+.nowline::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+
+/* ---------- drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(10,10,14,.28);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--surface);z-index:41;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.dr-top{display:flex;align-items:center;gap:10px;padding:14px 18px 8px}
+.dr-top .kind{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dr-top .status{font-size:12px;color:var(--faint);margin-left:auto}
+.dr-body{overflow:auto;padding:4px 18px 18px;display:flex;flex-direction:column;gap:14px;flex:1}
+.dr-foot{border-top:1px solid var(--line-soft);padding:12px 18px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dr-foot .sp{flex:1}
+.big{font:700 22px/1.2 var(--display);border:0;border-bottom:1px solid var(--line);background:transparent;padding:6px 0;width:100%;border-radius:0}
+.big:focus{outline:none;border-bottom-color:var(--ink)}
+.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted);min-width:0}
+.fld input,.fld textarea,.fld select{font-weight:400;font-size:14px;color:var(--ink);border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 8px;width:100%}
+.fld textarea{resize:vertical;min-height:170px;line-height:1.5}
+.row3{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px}
+.hint{font-size:12px;color:var(--faint);margin:-6px 0 0}
+.cats{border:0;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:6px}
+.cats legend{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;padding:0}
+.cats label{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 10px 4px 5px;font-size:12.5px;cursor:pointer}
+.cats label i{width:16px;height:16px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--c),var(--stripe-base) 25%)}
+.cats input{position:absolute;opacity:0;pointer-events:none}
+.cats label:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.cats label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.tog{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.tog input{width:16px;height:16px;accent-color:var(--ink)}
+.links{display:flex;flex-direction:column;gap:4px;font-size:12.5px}
+.links a{color:var(--ink);overflow-wrap:anywhere}
+.sec{display:flex;flex-direction:column;gap:10px;padding-top:14px;border-top:1px solid var(--line-soft)}
+.sec:first-child{border-top:0;padding-top:0}
+.sec h3{margin:0;font:700 15px/1.2 var(--display)}
+.sec p{margin:0;font-size:13px;color:var(--muted);max-width:60ch}
+.catrow{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:8px;align-items:center}
+.catrow input[type=text]{border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--surface);width:100%}
+.sw{width:40px;height:32px;border:1px solid var(--line);border-radius:6px;background:var(--c);padding:0}
+ol.steps{margin:0;padding-left:18px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 14px;border-radius:8px;font-size:13px;z-index:80;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+
+/* ---------- colour panel ---------- */
+.cpop{position:fixed;z-index:70;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px;width:248px;display:flex;flex-direction:column;gap:10px}
+.cpop h4{margin:0;font:700 13px/1.2 var(--display)}
+.cp-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+.cp-grid button{aspect-ratio:1;border-radius:50%;border:0;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.14);padding:0}
+.cp-grid button:hover{transform:scale(1.12)}
+.cp-grid button[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:2px}
+.cp-row{display:flex;gap:8px;align-items:center}
+.cp-row label{font-size:12px;font-weight:600;color:var(--muted)}
+.cp-row input[type=color]{width:44px;height:32px;border:1px solid var(--line);border-radius:6px;padding:2px;background:var(--surface);cursor:pointer}
+.cp-row input[type=text]{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--surface);font-variant-numeric:tabular-nums;text-transform:uppercase}
+
+@media (max-width:1100px){
+  .dow{grid-template-columns:repeat(7,minmax(0,1fr))}
+  .dow span:last-child{display:none}
+  .week{grid-template-columns:repeat(7,minmax(0,1fr))}
+  .wtodo{grid-column:1/-1}
+  .wkview{grid-template-columns:1fr}
+}
+@media (max-width:720px){
+  .dow{display:none}
+  .week{grid-template-columns:1fr;gap:4px}
+  .day{min-height:0;flex-direction:row;padding:8px 8px 8px 10px;gap:10px}
+  .dh{flex-direction:column;align-items:flex-start;gap:2px;width:44px;flex:none}
+  .dh .wd{display:block}
+  .items{flex:1}
+  .add{position:static;opacity:1;flex:none;align-self:flex-start;padding:2px 6px}
+  .ctrls{margin-left:0}
+  .row3{grid-template-columns:1fr 1fr}
+  .row3 .fld:first-child{grid-column:1/-1}
+  .drawer{top:auto;max-height:92%;width:100%;border-radius:14px 14px 0 0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <h1 class="range" id="range">&nbsp;</h1>
+  <div class="ctrls">
+    <div class="seg" role="group" aria-label="View">
+      <button id="v-month" aria-pressed="true">4 weeks</button>
+      <button id="v-week" aria-pressed="false">Week</button>
+    </div>
+    <button class="btn icon" id="prev" aria-label="Previous week" title="Previous week (←)">‹</button>
+    <button class="btn" id="today">This week</button>
+    <button class="btn icon" id="next" aria-label="Next week" title="Next week (→)">›</button>
+    <button class="btn primary" id="new">New event</button>
+    <button class="btn syncpill" id="sync" data-state="off"><i></i><span>Sync is off</span></button>
+    <button class="btn" id="settings">Settings</button>
+  </div>
+  <div class="legend" id="legend" aria-label="Colours: click a dot to change it, click a name to show or hide it"></div>
+</header>
+
+<main id="main"></main>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden role="dialog" aria-modal="true" aria-labelledby="dr-kind">
+  <div class="dr-top"><span class="kind" id="dr-kind">Event</span><span class="status" id="dr-status"></span>
+    <button class="btn icon" id="dr-close" aria-label="Close">✕</button></div>
+  <div class="dr-body" id="dr-body"></div>
+  <div class="dr-foot" id="dr-foot"></div>
+</aside>
+
+<div class="cpop" id="cpop" hidden role="dialog" aria-labelledby="cp-title">
+  <h4 id="cp-title">Colour</h4>
+  <div class="cp-grid" id="cp-grid"></div>
+  <div class="cp-row">
+    <label for="cp-custom">Any colour</label>
+    <input type="color" id="cp-custom" title="Open the full colour picker">
+    <input type="text" id="cp-hex" aria-label="Hex code" maxlength="7" spellcheck="false">
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+/* ================= utilities ================= */
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2, "0");
+const ds = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const pd = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (s, n) => { const d = pd(s); d.setDate(d.getDate() + n); return ds(d); };
+const diffDays = (a, b) => Math.round((pd(a) - pd(b)) / 864e5);
+const mondayOf = s => addDays(s, -((pd(s).getDay() + 6) % 7));
+const todayStr = () => ds(new Date());
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const WD = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const mins = t => { if (!t) return null; const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const hhmm = m => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`;
+const fmtT = t => { if (!t) return ""; let [h, m] = t.split(":").map(Number); const ap = h < 12 ? "a" : "p"; h = h % 12 || 12; return h + (m ? ":" + pad(m) : "") + ap; };
+const fmtD = s => { const d = pd(s); return `${WD[(d.getDay() + 6) % 7]}, ${MON[d.getMonth()]} ${d.getDate()}`; };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const urls = s => [...new Set(String(s || "").match(/https?:\/\/[^\s<>"')]+/g) || [])];
+let toastT;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
+const ls = {
+  get(k, f) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch { return f; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+};
+
+/* ================= state ================= */
+const DEFAULT_CATS = [
+  { id: "school",  name: "School",     color: "#D9EAD3" },
+  { id: "net",     name: "Networking", color: "#DDD0FF" },
+  { id: "workout", name: "Workout",    color: "#FFF2CC" },
+  { id: "brew",    name: "Work",       color: "#FFD6AD" },
+  { id: "fun",     name: "Social",     color: "#FFD3F0" },
+  { id: "course",  name: "Learning",   color: "#D2E5FF" },
+];
+const PRESETS = ["#F8D7DA","#FBE3C4","#FFF2CC","#DDEFC9","#D9EAD3","#CFE8E4","#D2E5FF","#DCE3F7","#DDD0FF","#EBD5F5","#FFD3F0","#E7E1D8",
+  "#F28B82","#FBBC04","#FFE066","#81C995","#4DB6AC","#78A9FF","#7E88D8","#B39DDB","#F48FB1","#A1887F","#BDBDBD","#90A4AE"];
+const S = {
+  events: new Map(), todos: new Map(),
+  cfg: { categories: DEFAULT_CATS }, cfgAt: 0, deleted: {},
+  savedAt: 0,
+  view: ls.get("fwp.view", "month"),
+  anchor: mondayOf(todayStr()),
+  hidden: new Set(ls.get("fwp.hidden", [])),
+};
+const cat = id => (S.cfg.categories || []).find(c => c.id === id) || { id: "none", name: "No colour", color: "#E4E4E7" };
+
+/* ================= saving: this device, plus sync through a private GitHub repo ================= */
+const KEY = "fwp.data", GHKEY = "fwp.github";
+const stable = v => Array.isArray(v) ? v.map(stable) : v && typeof v === "object" ? Object.keys(v).sort().reduce((o, k) => (o[k] = stable(v[k]), o), {}) : v;
+function snapshot() {
+  return { app: "weekly-planner", version: 2, savedAt: S.savedAt, events: [...S.events.values()], todos: [...S.todos.values()],
+    cfg: S.cfg, cfgAt: S.cfgAt, deleted: S.deleted };
+}
+function applyData(d) {
+  S.events = new Map((d.events || []).map(e => [e.id, e]));
+  S.todos = new Map((d.todos || []).map(t => [t.id, t]));
+  if (d.cfg) S.cfg = { categories: d.cfg.categories || DEFAULT_CATS };
+  S.cfgAt = d.cfgAt || 0;
+  S.deleted = d.deleted || {};
+  S.savedAt = d.savedAt || 0;
+}
+function saveAll() {
+  S.savedAt = Date.now();
+  if (!ls.set(KEY, snapshot())) toast("This browser couldn't save. Download a backup from Settings so nothing is lost.");
+  if (GH.cfg) { GH.dirty = true; scheduleSync(2500); }
+}
+function persist(coll, id, data) {
+  const m = coll === "events" ? S.events : S.todos, now = Date.now();
+  if (data) { m.set(id, { ...data, id, updatedAt: now }); delete S.deleted[id]; }
+  else { m.delete(id); S.deleted = { ...S.deleted, [id]: now }; }
+  saveAll(); render();
+}
+function persistCfg() { S.cfgAt = Date.now(); saveAll(); render(); }
+
+// Combine two copies item by item, so edits made on the phone and the laptop both survive.
+function mergeData(a, b) {
+  const del = { ...(a.deleted || {}) };
+  for (const [k, v] of Object.entries(b.deleted || {})) del[k] = Math.max(del[k] || 0, v);
+  const list = (x = [], y = []) => {
+    const m = new Map();
+    for (const it of [...x, ...y]) { const cur = m.get(it.id); if (!cur || (it.updatedAt || 0) > (cur.updatedAt || 0)) m.set(it.id, it); }
+    return [...m.values()].filter(it => !(del[it.id] >= (it.updatedAt || 0))).sort((p, q) => p.id < q.id ? -1 : 1);
+  };
+  const events = list(a.events, b.events), todos = list(a.todos, b.todos);
+  const cutoff = Date.now() - 90 * 864e5; // forget deletions after 90 days
+  for (const k in del) if (del[k] < cutoff) delete del[k];
+  const useB = (b.cfgAt || 0) > (a.cfgAt || 0);
+  return { app: "weekly-planner", version: 2, savedAt: Math.max(a.savedAt || 0, b.savedAt || 0),
+    events, todos,
+    cfg: useB ? b.cfg : a.cfg, cfgAt: Math.max(a.cfgAt || 0, b.cfgAt || 0), deleted: del };
+}
+const sameData = (x, y) => JSON.stringify(stable({ ...x, savedAt: 0 })) === JSON.stringify(stable({ ...y, savedAt: 0 }));
+
+const GH = { cfg: ls.get(GHKEY, null), sha: null, busy: false, dirty: false, last: 0, state: "off", timer: null };
+const b64enc = s => { const b = new TextEncoder().encode(s); let bin = ""; for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(bin); };
+const b64dec = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g, "")), c => c.charCodeAt(0)));
+function ghFetch(method, body) {
+  const { owner, repo, token } = GH.cfg;
+  return fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/data.json`, {
+    method, cache: "no-store",
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", ...(body ? { "Content-Type": "application/json" } : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+}
+function scheduleSync(ms) { clearTimeout(GH.timer); GH.timer = setTimeout(sync, ms); }
+async function sync(attempt = 0) {
+  if (!GH.cfg || GH.busy) return;
+  if (!navigator.onLine) { setSync("offline"); return; }
+  GH.busy = true; setSync("syncing");
+  try {
+    const r = await ghFetch("GET");
+    let remote = null;
+    if (r.status === 404) GH.sha = null;
+    else if (!r.ok) throw { status: r.status };
+    else { const j = await r.json(); GH.sha = j.sha; remote = JSON.parse(b64dec(j.content)); }
+    const local = snapshot();
+    const merged = remote ? mergeData(local, remote) : local;
+    if (!sameData(merged, local)) { applyData(merged); ls.set(KEY, snapshot()); render(); if (D && D.mode === "settings") drawSettings(); }
+    if (!remote || !sameData(merged, remote)) {
+      const w = await ghFetch("PUT", { message: "Planner update", content: b64enc(JSON.stringify(merged)), ...(GH.sha ? { sha: GH.sha } : {}) });
+      if ((w.status === 409 || w.status === 422) && attempt < 2) { GH.busy = false; return sync(attempt + 1); }
+      if (!w.ok) throw { status: w.status };
+      GH.sha = (await w.json()).content.sha;
+    }
+    GH.dirty = false; GH.last = Date.now(); setSync("ok");
+  } catch (e) {
+    setSync(e && e.status === 401 ? "auth" : e && (e.status === 404 || e.status === 403) ? "norepo" : "offline");
+  } finally {
+    GH.busy = false;
+    if (GH.dirty && GH.state === "ok") scheduleSync(1500);
+  }
+}
+const SYNC_TEXT = {
+  off: ["Sync is off", "Set up sync in Settings to use the planner on your phone"],
+  syncing: ["Syncing…", ""],
+  ok: ["Synced", ""],
+  offline: ["Offline, saved on this device", "Changes will sync when you're back online"],
+  auth: ["Sync stopped: token problem", "Your GitHub token is wrong or expired. Add a new one in Settings."],
+  norepo: ["Sync stopped: can't reach the data repo", "Check the username, repo name and token permissions in Settings."]
+};
+function setSync(state) {
+  GH.state = state;
+  const b = $("#sync"); b.dataset.state = state;
+  b.querySelector("span").textContent = SYNC_TEXT[state][0];
+  b.title = state === "ok" ? "Last synced " + new Date(GH.last).toLocaleTimeString() : SYNC_TEXT[state][1];
+  const s = $("#sync-status");
+  if (s && GH.cfg) s.innerHTML = `Connected to <b>${esc(GH.cfg.owner)}/${esc(GH.cfg.repo)}</b>. ${esc(state === "ok" ? "Last synced at " + new Date(GH.last).toLocaleTimeString() + "." : SYNC_TEXT[state][0] + ". " + SYNC_TEXT[state][1])}`;
+}
+function connectGitHub(owner, repo, token) {
+  GH.cfg = { owner: owner.trim(), repo: repo.trim(), token: token.trim() }; GH.sha = null;
+  ls.set(GHKEY, GH.cfg); sync();
+}
+function disconnectGitHub() { GH.cfg = null; GH.sha = null; try { localStorage.removeItem(GHKEY); } catch {} setSync("off"); }
+document.addEventListener("visibilitychange", () => { if (!GH.cfg) return; if (document.visibilityState === "visible") sync(); else if (GH.dirty) sync(); });
+window.addEventListener("online", () => GH.cfg && sync());
+setInterval(() => { if (GH.cfg && document.visibilityState === "visible" && !D) sync(); }, 60 * 1000);
+window.addEventListener("storage", e => { if (e.key === KEY && e.newValue) { try { applyData(JSON.parse(e.newValue)); render(); } catch {} } });
+
+function downloadBackup() {
+  const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `planner-backup-${todayStr()}.json`;
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ================= occurrences ================= */
+const knownCat = id => (S.cfg.categories || []).some(c => c.id === id) ? id : "none";
+function occurrences(from, to) {
+  const out = [];
+  for (const e of S.events.values()) {
+    if (!e.date) continue;
+    if (!e.repeat) { if (e.date >= from && e.date <= to) out.push({ ...e, kind: "own", occ: e.date }); continue; }
+    let d = e.date;
+    if (d < from) d = addDays(d, Math.floor(diffDays(from, d) / 7) * 7);
+    for (; d <= to; d = addDays(d, 7)) {
+      if (e.repeatUntil && d > e.repeatUntil) break;
+      if (d < from || (e.skip || []).includes(d)) continue;
+      out.push({ ...e, kind: "own", occ: d, date: d, notes: (e.occNotes || {})[d] || "", done: !!(e.occDone || {})[d] });
+    }
+  }
+  return out.filter(o => !S.hidden.has(knownCat(o.cat)));
+}
+const sortOcc = (a, b) => (a.start ? 1 : 0) - (b.start ? 1 : 0) || (mins(a.start) ?? 0) - (mins(b.start) ?? 0) || (a.title || "").localeCompare(b.title || "");
+function byDate(list) { const m = {}; for (const o of list) (m[o.date] = m[o.date] || []).push(o); for (const k in m) m[k].sort(sortOcc); return m; }
+
+/* ================= rendering ================= */
+function itemHTML(o, opts = {}) {
+  const c = cat(knownCat(o.cat));
+  const task = !o.start;
+  const draggable = o.kind === "own" && !o.repeat;
+  const cls = ["ev", task ? "task" : "timed", o.done ? "done" : "", knownCat(o.cat) === "none" ? "none" : ""].join(" ");
+  const tm = task ? `<input type="checkbox" class="chk" aria-label="Mark “${esc(o.title)}” done" ${o.done ? "checked" : ""}>` : `<span class="tm">${fmtT(o.start)}</span>`;
+  return `<div class="${cls}" role="button" tabindex="0" style="--c:${c.color};${opts.style || ""}" draggable="${draggable}" data-kind="${o.kind}" data-id="${esc(o.id)}" data-occ="${o.occ}" title="${esc(o.title)}">`
+    + (opts.stack ? `<span class="tm">${fmtT(o.start)}${o.end ? "–" + fmtT(o.end) : ""}</span>` : tm)
+    + `<span class="ttl">${esc(o.title)}</span>`
+    + (o.repeat ? `<span class="rp" title="Repeats weekly">↻</span>` : "")
+    + (o.notes ? `<span class="nd" title="Has notes"></span>` : "")
+    + `</div>`;
+}
+function todoPanel(week) {
+  const list = [...S.todos.values()].filter(t => t.week === week).sort((a, b) => (!!a.done - !!b.done) || (a.order || 0) - (b.order || 0));
+  const left = list.filter(t => !t.done).length;
+  const cur = week === mondayOf(todayStr());
+  const d = pd(week), e = pd(addDays(week, 6));
+  const lbl = `${MON[d.getMonth()]} ${d.getDate()}–${d.getMonth() === e.getMonth() ? "" : MON[e.getMonth()] + " "}${e.getDate()}`;
+  return `<aside class="wtodo ${cur ? "cur" : ""}" data-week="${week}">
+    <div class="wt-h"><h3>${cur ? "This week's to-dos" : "To-dos · " + lbl}</h3><span>${list.length ? left + " of " + list.length + " left" : ""}</span></div>
+    ${list.length ? `<ul class="tds">${list.map(t => `<li class="td ${t.done ? "done" : ""}" draggable="true" data-id="${esc(t.id)}">
+      <input type="checkbox" class="chk" aria-label="Mark “${esc(t.text)}” done" ${t.done ? "checked" : ""}>
+      <button class="tt">${esc(t.text)}</button>${t.notes ? `<span class="nd" title="Has notes"></span>` : ""}</li>`).join("")}</ul>`
+      : `<p class="empty-note">Nothing yet. Things that need doing this week, on no particular day.</p>`}
+    <form class="td-add"><label class="sr" for="add-${week}">Add a to-do for the week of ${lbl}</label><input id="add-${week}" placeholder="+ Add a to-do" autocomplete="off"></form>
+    ${left ? `<button class="roll" data-week="${week}">Move ${left} unfinished to next week</button>` : ""}
+  </aside>`;
+}
+function renderLegend() {
+  const all = occurrences(S.anchor, addDays(S.anchor, S.view === "month" ? 27 : 6));
+  const counts = {}; for (const o of all) { const k = knownCat(o.cat); counts[k] = (counts[k] || 0) + 1; }
+  const chips = (S.cfg.categories || []).map(c => `<span class="chip ${S.hidden.has(c.id) ? "off" : ""}" style="--c:${c.color}">
+    <button class="dot" data-colour-for="${c.id}" aria-label="Change colour for ${esc(c.name)}" title="Change colour"><i></i></button>
+    <button class="nm" data-cat="${c.id}" aria-pressed="${!S.hidden.has(c.id)}" title="Show or hide">${esc(c.name)}${counts[c.id] ? ` <span class="n">${counts[c.id]}</span>` : ""}</button></span>`);
+  $("#legend").innerHTML = chips.join("");
+}
+function renderRange() {
+  const days = S.view === "month" ? 27 : 6;
+  const a = pd(S.anchor), b = pd(addDays(S.anchor, days));
+  const txt = a.getMonth() === b.getMonth() ? `${MON[a.getMonth()]} ${a.getDate()} – ${b.getDate()}` : `${MON[a.getMonth()]} ${a.getDate()} – ${MON[b.getMonth()]} ${b.getDate()}`;
+  $("#range").textContent = `${txt}, ${b.getFullYear()}`;
+}
+function renderMonth() {
+  const today = todayStr();
+  const map = byDate(occurrences(S.anchor, addDays(S.anchor, 27)));
+  let h = `<div class="dow" aria-hidden="true">${WD.map(w => `<span>${w}</span>`).join("")}<span>Weekly to-dos</span></div><div class="weeks">`;
+  for (let w = 0; w < 4; w++) {
+    const wk = addDays(S.anchor, w * 7);
+    h += `<section class="week" aria-label="Week of ${fmtD(wk)}">`;
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(wk, i), dt = pd(d);
+      const showMo = dt.getDate() === 1 || (w === 0 && i === 0);
+      h += `<div class="day ${i > 4 ? "weekend" : ""} ${d === today ? "today" : ""} ${d < today ? "past" : ""}" data-date="${d}">
+        <div class="dh"><b>${dt.getDate()}</b>${showMo ? `<span class="mo">${MON[dt.getMonth()]}</span>` : ""}<span class="wd">${WD[i]}</span></div>
+        <div class="items">${(map[d] || []).map(o => itemHTML(o)).join("")}</div>
+        <button class="add" data-date="${d}" aria-label="Add to ${fmtD(d)}">+ Add</button></div>`;
+    }
+    h += todoPanel(wk) + `</section>`;
+  }
+  return h + `</div>`;
+}
+const HH = 46;
+function renderWeek() {
+  const today = todayStr(), from = S.anchor, to = addDays(from, 6);
+  const occ = occurrences(from, to);
+  const map = byDate(occ);
+  let lo = 7, hi = 22;
+  for (const o of occ) if (o.start) { lo = Math.min(lo, Math.floor(mins(o.start) / 60)); hi = Math.max(hi, Math.ceil(Math.max(mins(o.end) || 0, mins(o.start) + 60) / 60)); }
+  hi = Math.min(24, hi);
+  const H = (hi - lo) * HH;
+  let h = `<div class="wkview"><div class="tg-scroll"><div class="tg" style="--hh:${HH}px">`;
+  h += `<div class="hd"></div>` + [...Array(7)].map((_, i) => { const d = addDays(from, i); return `<div class="hd ${d === today ? "today" : ""}"><span>${WD[i]}</span><b>${pd(d).getDate()}</b></div>`; }).join("");
+  h += `<div class="adl">Tasks</div>` + [...Array(7)].map((_, i) => { const d = addDays(from, i); return `<div class="ad" data-date="${d}">${(map[d] || []).filter(o => !o.start).map(o => itemHTML(o)).join("")}<button class="add" data-date="${d}" aria-label="Add a task to ${fmtD(d)}">+ Add</button></div>`; }).join("");
+  h += `<div class="gut" style="height:${H}px">${[...Array(hi - lo)].map((_, k) => k ? `<span style="top:${k * HH}px">${fmtT(hhmm((lo + k) * 60))}</span>` : "").join("")}</div>`;
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(from, i);
+    const evs = (map[d] || []).filter(o => o.start).map(o => { const s = mins(o.start); return { o, s, e: Math.min(24 * 60, Math.max(mins(o.end) || s + 60, s + 20)) }; });
+    evs.sort((a, b) => a.s - b.s || b.e - a.e);
+    let cluster = [], cEnd = -1;
+    const flush = () => { const n = Math.max(1, ...cluster.map(x => x.lane + 1)); cluster.forEach(x => x.n = n); cluster = []; };
+    for (const x of evs) {
+      if (x.s >= cEnd && cluster.length) { flush(); cEnd = -1; }
+      const used = new Set(cluster.filter(y => y.e > x.s).map(y => y.lane));
+      let l = 0; while (used.has(l)) l++; x.lane = l; cluster.push(x); cEnd = Math.max(cEnd, x.e);
+    }
+    if (cluster.length) flush();
+    let now = "";
+    if (d === today) { const n = new Date(), m = n.getHours() * 60 + n.getMinutes(); if (m >= lo * 60 && m <= hi * 60) now = `<div class="nowline" style="top:${(m - lo * 60) / 60 * HH}px"></div>`; }
+    h += `<div class="col ${d === today ? "today" : ""}" data-date="${d}" data-lo="${lo}" style="height:${H}px">${now}${evs.map(x =>
+      itemHTML(x.o, { stack: true, style: `top:${(x.s - lo * 60) / 60 * HH + 1}px;height:${(x.e - x.s) / 60 * HH - 2}px;left:calc(${x.lane / x.n * 100}% + 2px);width:calc(${100 / x.n}% - 4px);` })).join("")}</div>`;
+  }
+  return h + `</div></div>${todoPanel(from)}</div>`;
+}
+function render() {
+  renderRange(); renderLegend();
+  const main = $("#main");
+  const active = document.activeElement && document.activeElement.closest(".td-add") ? document.activeElement.id : null;
+  main.innerHTML = S.view === "month" ? renderMonth() : renderWeek();
+  if (active && document.getElementById(active)) document.getElementById(active).focus();
+  $("#v-month").setAttribute("aria-pressed", S.view === "month");
+  $("#v-week").setAttribute("aria-pressed", S.view === "week");
+}
+
+/* ================= colour panel ================= */
+let cpFor = null;
+const colourOf = id => cat(id).color;
+function setColour(id, c) {
+  S.cfg = { ...S.cfg, categories: S.cfg.categories.map(x => x.id === id ? { ...x, color: c } : x) };
+  persistCfg();
+  document.querySelectorAll(`#dr-body [data-colour-for="${id}"]`).forEach(b => b.style.setProperty("--c", c));
+  markPreset(c);
+}
+function markPreset(c) { document.querySelectorAll("#cp-grid button").forEach(b => b.setAttribute("aria-pressed", b.dataset.c.toLowerCase() === String(c).toLowerCase())); $("#cp-custom").value = c; $("#cp-hex").value = c.toUpperCase(); }
+$("#cp-grid").innerHTML = PRESETS.map(c => `<button style="--c:${c}" data-c="${c}" aria-label="${c}" aria-pressed="false"></button>`).join("");
+function openColour(anchor, id) {
+  cpFor = id; const p = $("#cpop"); p.hidden = false;
+  $("#cp-title").textContent = "Colour for " + cat(id).name;
+  markPreset(colourOf(id));
+  const r = anchor.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight;
+  p.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  p.style.top = (r.bottom + h + 8 > innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6) + "px";
+  p.querySelector("[aria-pressed=true]")?.focus() || p.querySelector("#cp-grid button").focus();
+}
+function closeColour() { $("#cpop").hidden = true; cpFor = null; }
+$("#cp-grid").addEventListener("click", e => { const b = e.target.closest("button"); if (b && cpFor) setColour(cpFor, b.dataset.c); });
+$("#cp-custom").addEventListener("input", e => { if (cpFor) setColour(cpFor, e.target.value); });
+$("#cp-hex").addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  let v = e.target.value.trim(); if (!v.startsWith("#")) v = "#" + v;
+  if (/^#[0-9a-f]{6}$/i.test(v)) setColour(cpFor, v); else toast("Use a 6-digit hex code, like #D2E5FF.");
+});
+document.addEventListener("pointerdown", e => { if (!$("#cpop").hidden && !e.target.closest("#cpop, [data-colour-for]")) closeColour(); });
+
+/* ================= actions ================= */
+const findOcc = (kind, id, occ) => (() => { const e = S.events.get(id); if (!e) return null; return e.repeat ? { ...e, kind: "own", occ, date: occ, notes: (e.occNotes || {})[occ] || "", done: !!(e.occDone || {})[occ] } : { ...e, kind: "own", occ: e.date }; })();
+function toggleDone(kind, id, occ, val) {
+  const e = S.events.get(id); if (!e) return;
+  if (e.repeat) { const m = { ...(e.occDone || {}) }; if (val) m[occ] = true; else delete m[occ]; persist("events", id, { ...e, occDone: m }); }
+  else persist("events", id, { ...e, done: val });
+}
+function todoToEvent(t, date) {
+  if (!t) return;
+  persist("events", uid(), { title: t.text, date, start: null, end: null, cat: t.cat || "none", notes: t.notes || "", done: !!t.done, repeat: false, createdAt: Date.now() });
+  persist("todos", t.id, null);
+}
+function eventToTodo(e, week) {
+  persist("todos", uid(), { text: e.title, week, done: !!e.done, notes: e.notes || "", cat: e.cat, order: Date.now() });
+  persist("events", e.id, null);
+}
+
+/* ---------- drawer ---------- */
+let D = null, saveT;
+function openDrawer(ctx) {
+  D = ctx; $("#scrim").hidden = false; $("#drawer").hidden = false;
+  $("#dr-status").textContent = ""; $("#dr-body").oninput = null; $("#dr-body").onclick = null;
+  ({ event: drawEvent, todo: drawTodo, settings: drawSettings })[ctx.mode]();
+  const f = $("#dr-body").querySelector("[data-autofocus]"); if (f) f.focus();
+}
+function closeDrawer() {
+  if (D && saveT) { clearTimeout(saveT); saveT = null; D.save && D.save(); }
+  closeColour();
+  D = null; $("#scrim").hidden = true; $("#drawer").hidden = true; render();
+}
+function status(t) { $("#dr-status").textContent = t; }
+function queueSave() { status("Saving…"); clearTimeout(saveT); saveT = setTimeout(() => { saveT = null; D && D.save && D.save(); }, 450); }
+function linksHTML(text) { const u = urls(text); return u.length ? `<div class="links">${u.map(x => `<a href="${esc(x)}" target="_blank" rel="noopener">${esc(x.replace(/^https?:\/\//, "").slice(0, 70))} ↗</a>`).join("")}</div>` : ""; }
+function catPicker(sel) {
+  return `<fieldset class="cats"><legend>Colour</legend>${[{ id: "none", name: "No colour", color: "#E4E4E7" }, ...(S.cfg.categories || [])].map(c =>
+    `<label style="--c:${c.color}"><input type="radio" name="f-cat" value="${c.id}" ${knownCat(sel) === c.id ? "checked" : ""}><i></i>${esc(c.name)}</label>`).join("")}</fieldset>`;
+}
+function armDelete(btn, label, fn) {
+  btn.addEventListener("click", () => {
+    if (btn.classList.contains("armed")) { fn(); return; }
+    btn.classList.add("armed"); const old = btn.textContent; btn.textContent = label;
+    setTimeout(() => { btn.classList.remove("armed"); btn.textContent = old; }, 3500);
+  });
+}
+function drawEvent() {
+  const o = D.occ || { title: "", date: D.date || todayStr(), start: D.start || "", end: D.end || "", cat: "none", notes: "", repeat: false };
+  const series = !!o.repeat;
+  $("#dr-kind").textContent = D.id ? (series ? "Weekly event" : o.start ? "Event" : "Task") : "New event";
+  $("#dr-body").innerHTML = `
+    <label class="sr" for="f-title">Title</label>
+    <input id="f-title" class="big" placeholder="What's happening?" value="${esc(o.title)}" data-autofocus autocomplete="off">
+    <div class="row3">
+      <label class="fld">${series ? "First date" : "Date"}<input type="date" id="f-date" value="${series ? (S.events.get(D.id) || o).date : o.date}"></label>
+      <label class="fld">Start<input type="time" id="f-start" value="${o.start || ""}"></label>
+      <label class="fld">End<input type="time" id="f-end" value="${o.end || ""}"></label>
+    </div>
+    <p class="hint">No start time makes it a task for the day, with a checkbox.</p>
+    ${catPicker(o.cat)}
+    <div style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center">
+      <label class="tog"><input type="checkbox" id="f-rep" ${series ? "checked" : ""}> Repeat every week</label>
+      <label class="fld" id="f-untilw" style="flex-direction:row;align-items:center;gap:8px" ${series ? "" : "hidden"}>until <input type="date" id="f-until" value="${o.repeatUntil || ""}" style="width:auto"></label>
+    </div>
+    <label class="fld">${series ? `Notes for ${fmtD(D.occDate)}` : "Notes"}<textarea id="f-notes" placeholder="Agenda, prep, links, anything to remember…">${esc(o.notes || "")}</textarea></label>
+    <div id="f-links">${linksHTML(o.notes)}</div>
+    ${series ? `<p class="hint" style="margin:0">Changes to the title, time and colour apply to every week. Notes and the checkbox belong to ${fmtD(D.occDate)} only.</p>` : ""}`;
+  $("#dr-foot").innerHTML = D.id ? (series
+      ? `<button class="btn danger" id="d-skip">Remove ${fmtD(D.occDate).split(", ")[1]} only</button><button class="btn danger" id="d-del">Delete series</button><span class="sp"></span><button class="btn primary" id="d-done">Done</button>`
+      : `<button class="btn danger" id="d-del">Delete</button><button class="btn" id="d-todo" title="Move to this week's to-do list">Move to weekly to-dos</button><span class="sp"></span><button class="btn primary" id="d-done">Done</button>`)
+    : `<span class="sp"></span><button class="btn" id="d-cancel">Cancel</button><button class="btn primary" id="d-done">Add</button>`;
+  const body = $("#dr-body");
+  body.oninput = ev => {
+    if (ev.target.id === "f-rep") $("#f-untilw").hidden = !ev.target.checked;
+    if (ev.target.id === "f-notes") $("#f-links").innerHTML = linksHTML(ev.target.value);
+    if (D.id) queueSave();
+  };
+  $("#f-title").onkeydown = ev => { if (ev.key === "Enter") $("#d-done").click(); };
+  D.save = () => {
+    const title = $("#f-title").value.trim();
+    if (!title) { status("Add a title to save"); return false; }
+    const base = D.id ? { ...S.events.get(D.id) } : { createdAt: Date.now() };
+    const rep = $("#f-rep").checked, notes = $("#f-notes").value, start = $("#f-start").value || null;
+    const next = { ...base, title, date: $("#f-date").value || base.date || todayStr(), start, end: start ? ($("#f-end").value || null) : null,
+      cat: (body.querySelector("input[name=f-cat]:checked") || {}).value || "none", repeat: rep, repeatUntil: rep ? ($("#f-until").value || null) : null };
+    if (rep && base.repeat && D.occDate) { next.occNotes = { ...(base.occNotes || {}) }; if (notes) next.occNotes[D.occDate] = notes; else delete next.occNotes[D.occDate]; }
+    else next.notes = notes;
+    delete next.id;
+    if (!D.id) D.id = uid();
+    persist("events", D.id, next);
+    status("Saved");
+    return true;
+  };
+  $("#d-done").onclick = () => { if (!D.id) { if (D.save()) closeDrawer(); } else closeDrawer(); };
+  if ($("#d-cancel")) $("#d-cancel").onclick = () => { D.save = null; closeDrawer(); };
+  if ($("#d-del")) armDelete($("#d-del"), series ? "Delete every week?" : "Really delete?", () => { const id = D.id; D.save = null; persist("events", id, null); closeDrawer(); toast("Deleted"); });
+  if ($("#d-skip")) armDelete($("#d-skip"), "Confirm remove", () => { const e = { ...S.events.get(D.id) }; delete e.id; D.save = null; persist("events", D.id, { ...e, skip: [...(e.skip || []), D.occDate] }); closeDrawer(); });
+  if ($("#d-todo")) $("#d-todo").onclick = () => { const e = S.events.get(D.id); D.save = null; eventToTodo(e, mondayOf(e.date)); closeDrawer(); toast("Moved to weekly to-dos"); };
+}
+function drawTodo() {
+  const t = S.todos.get(D.id);
+  $("#dr-kind").textContent = "Weekly to-do";
+  $("#dr-body").innerHTML = `
+    <label class="sr" for="f-title">To-do</label>
+    <input id="f-title" class="big" value="${esc(t.text)}" data-autofocus autocomplete="off">
+    <label class="tog"><input type="checkbox" id="f-done" ${t.done ? "checked" : ""}> Done</label>
+    <label class="fld">Notes<textarea id="f-notes" placeholder="Details, links, next steps…">${esc(t.notes || "")}</textarea></label>
+    <div id="f-links">${linksHTML(t.notes)}</div>
+    <div class="sec"><h3>Give it a day</h3><p>Pick a date to turn this into a task on that day. You can also drag it onto a day.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><input type="date" id="f-sched" class="btn" value="${t.week}" aria-label="Date"><button class="btn" id="d-sched">Schedule</button></div></div>`;
+  $("#dr-foot").innerHTML = `<button class="btn danger" id="d-del">Delete</button><span class="sp"></span><button class="btn primary" id="d-done">Done</button>`;
+  $("#dr-body").oninput = ev => { if (ev.target.id === "f-notes") $("#f-links").innerHTML = linksHTML(ev.target.value); if (ev.target.id !== "f-sched") queueSave(); };
+  D.save = () => { const cur = S.todos.get(D.id); if (!cur) return; const text = $("#f-title").value.trim() || cur.text; persist("todos", D.id, { ...cur, text, notes: $("#f-notes").value, done: $("#f-done").checked }); status("Saved"); };
+  $("#d-done").onclick = closeDrawer;
+  $("#d-sched").onclick = () => { const d = $("#f-sched").value; if (!d) return; D.save(); todoToEvent(S.todos.get(D.id), d); D.save = null; closeDrawer(); toast("Scheduled for " + fmtD(d)); };
+  armDelete($("#d-del"), "Really delete?", () => { const id = D.id; D.save = null; persist("todos", id, null); closeDrawer(); });
+}
+
+/* ---------- settings ---------- */
+function drawSettings() {
+  $("#dr-kind").textContent = "Settings";
+  $("#dr-body").innerHTML = `
+    <section class="sec"><h3>Colours</h3><p>Click a swatch to pick any colour. You can also click the dots in the bar at the top.</p>
+      <div id="catlist" style="display:flex;flex-direction:column;gap:6px">${(S.cfg.categories || []).map(c => `
+        <div class="catrow" data-id="${c.id}"><button class="sw" data-colour-for="${c.id}" style="--c:${c.color}" aria-label="Change colour for ${esc(c.name)}"></button><input type="text" value="${esc(c.name)}" aria-label="Name"><button class="btn icon danger" data-del aria-label="Delete ${esc(c.name)}">✕</button></div>`).join("")}</div>
+      <div><button class="btn" id="cat-add">Add a colour</button></div></section>
+    <section class="sec"><h3>Sync across devices</h3>
+      <p id="sync-status">${GH.cfg ? `Connected to <b>${esc(GH.cfg.owner)}/${esc(GH.cfg.repo)}</b>.` : "Connect this device to your private GitHub data repo so the planner is the same on your laptop and phone. You do this once on each device."}</p>
+      ${GH.cfg ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="gh-now">Sync now</button><button class="btn danger" id="gh-off">Disconnect this device</button></div>`
+      : `<form id="gh-form" style="display:flex;flex-direction:column;gap:10px">
+          <label class="fld">GitHub username<input id="gh-owner" autocomplete="username" autocapitalize="off" required></label>
+          <label class="fld">Data repo name<input id="gh-repo" value="planner-data" autocapitalize="off" required></label>
+          <label class="fld">Access token<input id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…" required></label>
+          <div><button class="btn primary" type="submit">Connect</button></div>
+        </form>`}
+    </section>
+    <section class="sec"><h3>Backup</h3>
+      <p>Everything also saves on this device, so the planner keeps working offline. A backup file is a copy you can keep anywhere.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bk-dl">Download a backup</button>
+        <label class="btn" style="cursor:pointer">Restore a backup…<input type="file" id="bk-up" accept=".json,application/json" hidden></label></div>
+    </section>`;
+  $("#dr-foot").innerHTML = `<span class="sp"></span><button class="btn primary" id="d-done">Done</button>`;
+  $("#d-done").onclick = closeDrawer;
+  D.save = () => {
+    const names = {}; document.querySelectorAll("#catlist .catrow").forEach(r => names[r.dataset.id] = r.querySelector("input").value.trim() || "Untitled");
+    S.cfg = { ...S.cfg, categories: S.cfg.categories.map(c => names[c.id] ? { ...c, name: names[c.id] } : c) }; persistCfg(); status("Saved");
+  };
+  $("#catlist").oninput = queueSave;
+  $("#dr-body").onclick = e => {
+    const sw = e.target.closest("[data-colour-for]"); if (sw) { openColour(sw, sw.dataset.colourFor); return; }
+    const del = e.target.closest("[data-del]");
+    if (del) { const id = del.closest(".catrow").dataset.id; S.cfg = { ...S.cfg, categories: S.cfg.categories.filter(c => c.id !== id) }; persistCfg(); drawSettings(); }
+  };
+  $("#cat-add").onclick = () => {
+    const id = "c" + uid();
+    const used = new Set(S.cfg.categories.map(c => c.color.toLowerCase()));
+    const color = PRESETS.find(c => !used.has(c.toLowerCase())) || PRESETS[0];
+    S.cfg = { ...S.cfg, categories: [...S.cfg.categories, { id, name: "New colour", color }] }; persistCfg(); drawSettings();
+    const inp = $(`#catlist .catrow[data-id="${id}"] input`); inp.focus(); inp.select();
+  };
+  if ($("#gh-form")) $("#gh-form").onsubmit = e => { e.preventDefault(); connectGitHub($("#gh-owner").value, $("#gh-repo").value, $("#gh-token").value); drawSettings(); };
+  if ($("#gh-now")) $("#gh-now").onclick = () => sync();
+  if ($("#gh-off")) armDelete($("#gh-off"), "Disconnect?", () => { disconnectGitHub(); drawSettings(); toast("This device is no longer syncing. Your planner is still saved here."); });
+  setSync(GH.state);
+  $("#bk-dl").onclick = downloadBackup;
+  $("#bk-up").onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    f.text().then(t => { const d = JSON.parse(t); if (d.app !== "weekly-planner") throw 0; const now = Date.now(); applyData(d); for (const m of [S.events, S.todos]) for (const [k, v] of m) m.set(k, { ...v, updatedAt: now }); S.cfgAt = now; saveAll(); render(); drawSettings(); toast("Backup restored"); })
+      .catch(() => toast("That file isn't a planner backup."));
+  };
+}
+
+/* ================= wiring ================= */
+const main = $("#main");
+main.addEventListener("click", e => {
+  const chk = e.target.closest(".chk");
+  if (chk) {
+    const ev = chk.closest(".ev"), td = chk.closest(".td");
+    if (ev) toggleDone(ev.dataset.kind, ev.dataset.id, ev.dataset.occ, chk.checked);
+    else if (td) { const t = S.todos.get(td.dataset.id); if (t) persist("todos", t.id, { ...t, done: chk.checked }); }
+    e.stopPropagation(); return;
+  }
+  const ev = e.target.closest(".ev");
+  if (ev) { openOcc(ev); return; }
+  const tt = e.target.closest(".td .tt");
+  if (tt) { openDrawer({ mode: "todo", id: tt.closest(".td").dataset.id }); return; }
+  const roll = e.target.closest(".roll");
+  if (roll) {
+    const wk = roll.dataset.week, nx = addDays(wk, 7); let n = 0;
+    for (const t of [...S.todos.values()]) if (t.week === wk && !t.done) persist("todos", t.id, { ...t, week: nx, order: Date.now() + n++ });
+    toast(`Moved ${n} to the week of ${fmtD(nx)}`); return;
+  }
+  const add = e.target.closest(".add");
+  if (add) { openDrawer({ mode: "event", date: add.dataset.date }); return; }
+  const col = e.target.closest(".col");
+  if (col && e.target === col) {
+    const m = Math.floor((+col.dataset.lo * 60 + e.offsetY / HH * 60) / 30) * 30;
+    openDrawer({ mode: "event", date: col.dataset.date, start: hhmm(m), end: hhmm(Math.min(m + 60, 23 * 60 + 59)) }); return;
+  }
+  const day = e.target.closest(".day, .ad");
+  if (day && !e.target.closest("button, input, a")) openDrawer({ mode: "event", date: day.dataset.date });
+});
+main.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.classList.contains("ev")) { e.preventDefault(); openOcc(e.target); } });
+function openOcc(el) {
+  const o = findOcc(el.dataset.kind, el.dataset.id, el.dataset.occ);
+  if (!o) return;
+  openDrawer({ mode: "event", id: o.id, occ: o, occDate: o.repeat ? el.dataset.occ : null });
+}
+main.addEventListener("submit", e => {
+  e.preventDefault();
+  const input = e.target.querySelector("input"), text = input.value.trim(); if (!text) return;
+  persist("todos", uid(), { text, week: e.target.closest(".wtodo").dataset.week, done: false, notes: "", order: Date.now() });
+});
+
+let drag = null;
+main.addEventListener("dragstart", e => {
+  const ev = e.target.closest && e.target.closest(".ev[draggable=true]"), td = e.target.closest && e.target.closest(".td");
+  if (ev) drag = { type: "event", id: ev.dataset.id, el: ev, grabY: e.offsetY };
+  else if (td) drag = { type: "todo", id: td.dataset.id, el: td };
+  else return;
+  e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", drag.id);
+  requestAnimationFrame(() => drag && drag.el.classList.add("dragging"));
+});
+main.addEventListener("dragend", () => { if (drag) drag.el.classList.remove("dragging"); drag = null; document.querySelectorAll(".drop-ok").forEach(x => x.classList.remove("drop-ok")); });
+const dropTarget = e => e.target.closest && (e.target.closest(".col") || e.target.closest(".day, .ad") || e.target.closest(".wtodo"));
+main.addEventListener("dragover", e => {
+  if (!drag) return; const t = dropTarget(e); if (!t) return;
+  e.preventDefault();
+  document.querySelectorAll(".drop-ok").forEach(x => x !== t && x.classList.remove("drop-ok")); t.classList.add("drop-ok");
+});
+main.addEventListener("drop", e => {
+  if (!drag) return; const t = dropTarget(e); if (!t) return;
+  e.preventDefault(); t.classList.remove("drop-ok");
+  const { type, id } = drag;
+  if (t.classList.contains("wtodo")) {
+    if (type === "event") { const ev = S.events.get(id); if (ev) eventToTodo(ev, t.dataset.week); }
+    else { const td = S.todos.get(id); if (td && td.week !== t.dataset.week) persist("todos", id, { ...td, week: t.dataset.week }); }
+    return;
+  }
+  const date = t.dataset.date;
+  if (type === "todo") { todoToEvent(S.todos.get(id), date); return; }
+  const ev = S.events.get(id); if (!ev) return;
+  const next = { ...ev, date }; delete next.id;
+  if (t.classList.contains("col")) {
+    const y = e.clientY - t.getBoundingClientRect().top - (drag.grabY || 0);
+    const s = Math.max(0, Math.round((+t.dataset.lo * 60 + y / HH * 60) / 15) * 15);
+    const dur = ev.start && ev.end ? mins(ev.end) - mins(ev.start) : 60;
+    next.start = hhmm(Math.min(s, 23 * 60)); next.end = ev.end || ev.start ? hhmm(Math.min(s + dur, 23 * 60 + 59)) : null;
+  } else if (t.classList.contains("ad")) { next.start = null; next.end = null; }
+  persist("events", id, next);
+});
+
+$("#legend").addEventListener("click", e => {
+  const dot = e.target.closest("[data-colour-for]");
+  if (dot) { $("#cpop").hidden || cpFor !== dot.dataset.colourFor ? openColour(dot, dot.dataset.colourFor) : closeColour(); return; }
+  const c = e.target.closest(".nm"); if (!c) return;
+  const id = c.dataset.cat; S.hidden.has(id) ? S.hidden.delete(id) : S.hidden.add(id);
+  ls.set("fwp.hidden", [...S.hidden]); render();
+});
+const go = n => { S.anchor = addDays(S.anchor, 7 * n); render(); };
+$("#prev").onclick = () => go(-1);
+$("#next").onclick = () => go(1);
+$("#today").onclick = () => { S.anchor = mondayOf(todayStr()); render(); };
+$("#v-month").onclick = () => { S.view = "month"; ls.set("fwp.view", "month"); render(); };
+$("#v-week").onclick = () => { S.view = "week"; ls.set("fwp.view", "week"); render(); };
+$("#new").onclick = () => openDrawer({ mode: "event", date: S.anchor <= todayStr() && todayStr() <= addDays(S.anchor, 27) ? todayStr() : S.anchor });
+$("#settings").onclick = () => openDrawer({ mode: "settings" });
+$("#dr-close").onclick = closeDrawer;
+$("#scrim").onclick = closeDrawer;
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { if (!$("#cpop").hidden) { closeColour(); return; } if (D) { closeDrawer(); return; } }
+  if (D || e.target.closest("input, textarea, select, [contenteditable]")) return;
+  if (e.key === "ArrowLeft") go(-1); else if (e.key === "ArrowRight") go(1);
+});
+setInterval(() => { if (!D && S.view === "week") render(); }, 5 * 60 * 1000);
+
+$("#sync").onclick = () => openDrawer({ mode: "settings" });
+const stored = ls.get(KEY, null);
+if (stored) applyData(stored);
+render();
+setSync(GH.cfg ? "syncing" : "off");
+if (GH.cfg) sync();
+})();
+</script>
+</body>
+</html>
